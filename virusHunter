@@ -1,0 +1,129 @@
+#!/bin/bash
+# 2021 Geoghegan's Lab
+# Authors: Benjamin Perry, Rebecca Grimwood
+# (CC BY-NC-SA 4.0)
+# Version: 1.1.0
+# Maintainer: Benjamin J Perry
+# Email: benjamin.perry@otago.ac.nz
+# Status: Functional
+#Usage: ./virusHunter *.R1.fastq.gz *.R2.fastq.gz
+#clear
+printf "Begin Execution at: $(date)\n\n"
+START=`date +%s`
+sleep 1
+
+###  Check for read files ###
+if [ "$1" == "" ]; then
+	printf "No Read 1 Indicated...\n"
+	printf "Usage: virusHunter *.R1.fastq.gz *.R2.fastq.gz\n\n"
+	exit 1
+fi
+if [ "$2" == "" ]; then
+	printf "No Read 2 Indicated...\n"
+	printf "Usage: virusHunter *.R1.fastq.gz *.R2.fastq.gz\n\n"
+	exit 1
+fi
+if [ -f $1 ] && [ -f $2 ]; then
+	ILLUMINAR1=$1
+	ILLUMINAR2=$2
+	printf "Read Files: $ILLUMINAR1 $ILLUMINAR2\n\n"
+else
+	printf "ERROR: read files are not properly indicated.\n"
+	printf "Usage: virusHunter *.R1.fastq.gz *.R2.fastq.gz\n\n"
+	exit 1
+fi
+
+R1="$1"
+R2="$2"
+
+### BASE preparation will depend on read names (which delimiter combination used) ###
+BASE=$(echo $R1 | cut -d "_" -f 1,2,3,4) # for fish samples.
+printf "Assembling $BASE with Trinity: $(date).\n\n"
+### Genome Assembly with Trinity Assembler ###
+Trinity --seqType fq --max_memory 120G --left $1 --right $2 --CPU 24 --full_cleanup --output "trinity/$BASE.trinity" --trimmomatic
+
+OGASSEMBLY="trinity/$BASE.trinity.Trinity.fasta"
+ASSEMBLY="trinity/$BASE.clean.Trinity.fasta"
+printf "Assembly Complete: $(date).\n\n"
+
+### Prepare for BLAST ###
+printf "Preparing Assembly for BLAST: $(date).\n\n"
+TMPASSEMBLY="$BASE.temp.Trinity.fasta"
+sed "s/ path.*//gi" $OGASSEMBLY | sed "s/ /_/gi" | sed "s/=//gi" > $TMPASSEMBLY
+perl ~/tools/fa2oneline.pl $TMPASSEMBLY > $ASSEMBLY
+rm $TMPASSEMBLY
+
+printf "Finished Preparing $ASSEMBLY: $(date).\n\n"
+
+### BLAST ASSEMLBY ###
+printf "Preparing BLAST taxdb: $(date).\n\n"
+wget ftp://ftp.ncbi.nlm.nih.gov/blast/db/taxdb.tar.gz
+tar xvzf taxdb.tar.gz
+
+printf "Running blastn Analysis: $(date).\n\n"
+BLASTNT="$BASE.nt.txt.revised"
+BLASTNOUT="$BASE.nt.txt"
+printf "BLASTING: $ASSEMBLY. Storing Output in $BLASTNOUT.\n\n"
+
+blastn -query "$ASSEMBLY" -db /home/data/databases/nt/nt -max_target_seqs 5 -num_threads 24 -evalue 1E-10 -outfmt "6 qseqid sacc salltitles pident length evalue sskingdoms sscinames" -out "$BLASTNOUT"
+awk -F$'\t' '!seen[$1]++' $BLASTNOUT | sed 's/"${f}"_/TRINITY_/' > $BLASTNT
+
+printf "Running blastx Analysis: $(date).\n\n"
+BLASTNR="$BASE".nr.txt.revised
+diamond blastx -q "$ASSEMBLY" -d /home/data/databases/nr/nr -o "$BASE".nr.txt -e 1E-5 -k 3 -p 24 -f 6 qseqid qlen sseqid stitle pident length evalue sskingdoms sscinames --more-sensitive
+awk -F$'\t' '!seen[$1]++' "$BASE".nr.txt | sed 's/"${f}"_/TRINITY_/' > "$BLASTNR"
+
+printf "Running blastx vs RdRp Database: $(date).\n\n"
+RDRP="$BASE.RdRp.txt.revised"
+diamond blastx -q "$ASSEMBLY" -d /home/data/databases/rdrp/rdrp -o "$BASE".RdRp.txt -e 1E-5 -k 3 -p 24 -f 6 qseqid qlen sseqid stitle pident length evalue --more-sensitive
+awk -F$'\t' '!seen[$1]++' "$BASE".RdRp.txt | sed 's/"${f}"_/TRINITY_/' > "$RDRP"
+
+printf "Finished and reformatted all blasts for $BASE.\n\n"
+rm taxdb*
+
+### Abundance Calculation ###
+printf "Calculating Abundances for $BASE: $(date).\n\n"
+ABUND="abundance"
+mkdir "$ABUND"
+COUNTS="$BASE.RSEM.isoforms.results.revised"
+/usr/local/bin/trinityv2.11/util/align_and_estimate_abundance.pl --transcripts "$OGASSEMBLY" --seqType fq --left $R1 --right $R2 --est_method RSEM --aln_method bowtie2 --trinity_mode --output_dir $ABUND --prep_reference
+
+awk -v OFS='\t' '{ print $1,$2,$3,$3,$4,$5,$6,$7,$8 }' "$ABUND"/RSEM.isoforms.results | sed "s/\t[^\t]*g[0-9]*\t/_len/gi" | sed 1d > $COUNTS
+
+printf "Abundances for $COUNTS calculated and reformatted: $(date).\n\n"
+
+### Build database ###
+printf "Prepared Final Output Tables with SQL: $(date).\n\n"
+
+sqlite3 $BASE.trinity.fasta.summary.sql <<EOF
+
+CREATE TABLE abundance (transcript CHAR, length INT, eff_length FLOAT, exp_count FLOAT, TPM FLOAT, FPKM FLOAT, IsoPct FLOAT);
+CREATE TABLE blastnt (transcript CHAR, sseqid CHAR, stitle CHAR, pident FLOAT, hit_length INT, evalue FLOAT, kingdom CHAR, sciname CHAR);
+CREATE TABLE blastnr (transcript CHAR, qlen INT, sseqid CHAR, stitle CHAR, pident FLOAT, hit_length INT, evalue FLOAT, kingdom CHAR, sciname CHAR);
+CREATE TABLE blastRdRp (transcript CHAR, qlen INT, sseqid CHAR, stitle CHAR, pident FLOAT, hit_length INT, evalue FLOAT);
+
+.mode tabs
+.import $COUNTS abundance
+.import $BLASTNT blastnt
+.import $BLASTNR blastnr
+.import $RDRP blastRdRp
+
+CREATE TABLE abun_blastnt (transcript CHAR, length INT, exp_count FLOAT, transcript_nt CHAR, sseqid_nt CHAR, stitle_nt CHAR, pident_nt FLOAT, evalue_nt FLOAT, kingdom_nt CHAR, sciname_nt CHAR); 
+INSERT INTO abun_blastnt SELECT abundance.transcript, abundance.length, abundance.exp_count, blastnt.transcript, blastnt.sseqid, blastnt.stitle, blastnt.pident, blastnt.evalue, blastnt.kingdom, blastnt.sciname FROM abundance LEFT JOIN blastnt ON abundance.transcript=blastnt.transcript;
+
+CREATE TABLE abun_blastnt_blastnr (transcript CHAR, length INT, exp_count FLOAT, transcript_nt CHAR, sseqid_nt CHAR, stitle_nt CHAR, pident_nt FLOAT, evalue_nt FLOAT, kingdom_nt CHAR, sciname_nt CHAR, transcript_nr CHAR, sseqid_nr CHAR, stitle_nr CHAR, pident_nr FLOAT, evalue_nr FLOAT, kingdom_nr CHAR, sciname_nr CHAR); 
+INSERT INTO abun_blastnt_blastnr SELECT abun_blastnt.*, blastnr.transcript, blastnr.sseqid, blastnr.stitle, blastnr.pident, blastnr.evalue, blastnr.kingdom, blastnr.sciname FROM abun_blastnt LEFT JOIN blastnr ON abun_blastnt.transcript=blastnr.transcript;
+
+CREATE TABLE abun_blastnt_blastnr_blastRdRp (transcript CHAR, length INT, exp_count FLOAT, transcript_nt CHAR, sseqid_nt CHAR, stitle_nt CHAR, pident_nt FLOAT, evalue_nt FLOAT, kingdom_nt CHAR, sciname_nt CHAR, transcript_nr CHAR, sseqid_nr CHAR, stitle_nr CHAR, pident_nr FLOAT, evalue_nr FLOAT, kingdom_nr CHAR, sciname_nr CHAR, transcript_RdRp CHAR, stitle_RdRp CHAR, pident_RdRp FLOAT, evalue_RdRp FLOAT); 
+INSERT INTO abun_blastnt_blastnr_blastRdRp SELECT abun_blastnt_blastnr.*, blastRdRp.transcript, blastRdRp.stitle, blastRdRp.pident, blastRdRp.evalue FROM abun_blastnt_blastnr LEFT JOIN blastRdRp ON abun_blastnt_blastnr.transcript=blastRdRp.transcript;
+
+.output $BASE.summary.table.txt
+SELECT rowid, abun_blastnt_blastnr_blastRdRp.* FROM abun_blastnt_blastnr_blastRdRp;
+.output stdout
+.exit
+EOF
+
+printf "Filtering Summary Table for Viral Taxa: $(date).\n\n"
+grep -e 'Viruses' -e '\[.*virus' $BASE.summary.table.txt > $BASE.virus.summary.table.txt
+
+printf "Completed virusHunter at: $(date)\n\n"
