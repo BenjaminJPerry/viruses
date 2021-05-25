@@ -16,7 +16,7 @@ RT1=$(echo $R1 | cut -d "_" -f "1").trim_1P.fq.gz
 RT2=$(echo $R1 | cut -d "_" -f "1").trim_2P.fq.gz
 
 # Trinity Assembly
-#Trinity --seqType fq --max_memory 120G --left $RT1 --right $RT2 --CPU 24 --full_cleanup --output trinity --include_supertranscripts
+Trinity --seqType fq --max_memory 120G --left $RT1 --right $RT2 --CPU 12 --full_cleanup --output trinity --include_supertranscripts
 # SPAdes Assembly --rna
 #spades.py --rna -1 $RT1 -2 $RT2 -t 24 -m 128 --only-assembler -o SPAdes-rna
 # SPAdes Assembly --metaviral
@@ -26,10 +26,10 @@ RT2=$(echo $R1 | cut -d "_" -f "1").trim_2P.fq.gz
 # SPAdes Assembly RNA Viral
 #spades.py --rnaviral -1 $RT1 -2 $RT2 -t 24 -m 128 --only-assembler -o SPAdes-rnaViral
 # Trans-Abyss Assembly
-conda activate transabyss
-transabyss --pe $RT1 $RT2 --outdir transabyss --kmer 32 --threads 24
-conda deactivate
-
+#conda activate transabyss
+#transabyss --pe $RT1 $RT2 --outdir transabyss --kmer 32 --threads 24
+#conda deactivate
+#sleep 10
 # rnabloom Assembly
 #rnabloom --left $RT1 --right $RT2 -t 24 -o rnabloom -k 32 -mem 128
 

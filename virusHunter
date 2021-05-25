@@ -126,4 +126,5 @@ EOF
 printf "Filtering Summary Table for Viral Taxa: $(date).\n\n"
 grep -e 'Viruses' -e '\[.*virus' $BASE.summary.table.txt > $BASE.virus.summary.table.txt
 
+
 printf "Completed virusHunter at: $(date)\n\n"
