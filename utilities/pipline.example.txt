@@ -1,0 +1,87 @@
+#!/bin/bash
+
+# login to almeida
+ssh username@almeida.default.uod.otago.ac.nz
+
+#########
+
+# Send file to almeida
+scp filename username@almeida.default.uod.otago.ac.nz:/home/username/folder
+
+# Send folder to almeida
+scp -r foldername username@almeida.default.uod.otago.ac:
+
+Send file from almeida to current directory
+scp username@almeida.default.uod.otago.ac:/home/username/folder/filename .
+
+# Send folder from almeida  to current directory
+scp -r username@almeida.default.uod.otago.ac:/home/username/folder/filename .
+
+# Current directory
+pwd
+
+# List contents
+ls -l
+
+# Change directory to home
+cd
+
+# Change directory
+cd foldername
+
+# Change directory to previous
+cd ..
+
+# Make new folder
+mkdir foldername
+
+##########
+
+# virus discovery commands
+
+# download data from the SRA using the accession number, e.g. SRR7084910	
+fastq-dump --split-files SRR7084910	
+
+
+# assemble short reads into longer contigs using trinity
+nohup Trinity --seqType fq --max_memory 120G --left myfile.R1.cat.fastq.gz --right myfile.R2.cat.fastq.gz --CPU 24 --full_cleanup --output myfile.trinity --trimmomatic &
+
+
+# trinity output file requires reformatting to work with blast
+# put the 'fa2oneline.pl' script into your folder for renaming trinity output (script provided by Jemma)
+# authorise the perl script using following command (only need to do this once)
+chmod a+x fa2oneline.pl 
+
+# reformat trinity file
+sed "s/ path.*//gi" myfile.trinity.Trinity.fasta | sed "s/ /_/gi" | sed "s/=//gi" > temp.trinity.fasta
+perl fa2oneline.pl temp.trinity.fasta > myfile.trinity.fasta
+
+
+# search BLAST for RdRp (polymerase) viral sequences
+nohup diamond blastx -q myfile.trinity.fasta -d /home/data/databases/rdrp/rdrp -o myfile.trinity.fasta_RdRp.txt -e 1E-5 -k 3 -p 24 -f 6 qseqid qlen sseqid stitle pident length evalue --more-sensitive &
+
+
+# search BLAST for nr (non-redundant protein database) sequences
+nohup diamond blastx -q myfile.trinity.fasta -d /home/data/databases/nr/nr -o myfile.trinity.fasta_nr.txt -e 1E-5 -k 3 -p 24 -f 6 qseqid qlen sseqid stitle pident length evalue --more-sensitive &
+
+
+
+# search BLAST for nt (nucleotide database) sequences
+nohup blastn -query myfile.trinity.fasta -db /home/data/databases/nt/nt -out myfile.trinity.fasta_nt.txt -max_target_seqs 5 -num_threads 24 -evalue 1E-10 -outfmt "6 qseqid sacc salltitles pident length evalue sskingdoms" &
+
+
+# search all blast results for "virus" then sort by e-value
+grep -i "\[.*virus" myfile.txt | sort -t$'\t' -gr -k7,7 
+
+# copy potential virus sequence from trinity file into geneious, find open reading frame, translate to protein
+# use blast webserver to double check sequence is viral (https://blast.ncbi.nlm.nih.gov/Blast.cgi)
+# download genetic relatives of virus and align sequences in Geneious using MAFFT
+# trim alignment using trimAl to eliminate gaps (http://trimal.cgenomics.org/)
+# construct a phylogeny (http://www.atgc-montpellier.fr/phyml/)
+# view tree in FigTree (http://tree.bio.ed.ac.uk/software/figtree/)
+
+# sequence read abundance estimation (I will help you make a summary table with this output - bit complicated to explain here)
+nohup /opt/trinityrnaseq-Trinity-v2.5.1/util/align_and_estimate_abundance.pl --transcripts myfile.trinity.Trinity.fasta --seqType fq --left myfile_R1.fastq.gz --right myfile_R2.fastq.gz --est_method RSEM --aln_method bowtie --trinity_mode --output_dir abundance_myfile --prep_reference &
+
+
+##########

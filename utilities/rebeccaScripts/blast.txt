@@ -1,0 +1,42 @@
+## Check .ncbirc file exists
+## staxids?
+## update tables if incl taxids
+
+echo "---------------------------------------- Reformat & BLAST --------------------------------------" > blastlog.txt
+
+# OUTPUT TRINITY FILE NAME PREFIX LIST
+files=(S1 S2 S3)
+
+echo "These are the files that will be blasted..." >> blastlog.txt
+echo "${files[@]}" >> blastlog.txt
+
+
+for f in "${files[@]}"
+do
+	sed "s/ path.*//gi" ../assemble/"${f}".trinity.Trinity.fasta | sed "s/ /_/gi" | sed "s/=//gi" > "${f}".temp.trinity.fasta &&
+	perl fa2oneline.pl "${f}".temp.trinity.fasta > "${f}".trinity.fasta &&
+	rm "${f}".temp.trinity.fasta &&
+
+	echo "Finished reformatting .fasta." >> blastlog.txt 
+	
+done # end for
+
+for f in "${files[@]}"
+do
+	# search BLAST for RdRp (polymerase) viral sequences
+	diamond blastx -q "${f}".trinity.fasta -d /home/data/databases/rdrp/rdrp -o "${f}".trinity.fasta_RdRp.txt -e 1E-5 -k 3 -p 24 -f 6 qseqid qlen sseqid stitle pident length evalue --more-sensitive &&
+	awk -F$'\t' '!seen[$1]++' "${f}".trinity.fasta_RdRp.txt | sed 's/"${f}"_/TRINITY_/' > ../abun/"${f}".trinity.fasta_RdRp.txt.revised &&
+	
+	# search BLAST for nr (non-redundant protein database) sequences
+	diamond blastx -q "${f}".trinity.fasta -d /home/data/databases/nr/nr -o "${f}".trinity.fasta_nr.txt -e 1E-5 -k 3 -p 24 -f 6 qseqid qlen sseqid stitle pident length evalue sskingdoms sscinames --more-sensitive && 
+	awk -F$'\t' '!seen[$1]++' "${f}".trinity.fasta_nr.txt | sed 's/"${f}"_/TRINITY_/' > ../abun/"${f}".trinity.fasta_nr.txt.revised &&
+	
+	# search BLAST for nt (nucleotide database) sequences
+	blastn -query "${f}".trinity.fasta -db nt -out "${f}".trinity.fasta_nt.txt -max_target_seqs 5 -num_threads 24 -evalue 1E-10 -outfmt "6 qseqid sacc salltitles pident length evalue sskingdoms sscinames" &&
+	awk -F$'\t' '!seen[$1]++' "${f}".trinity.fasta_nt.txt | sed 's/"${f}"_/TRINITY_/' > ../abun/"${f}".trinity.fasta_nt.txt.revised &&
+	
+	echo "Finished and reformatted all blasts for ${f}" >> blastlog.txt
+	
+done # end for
+
+echo "All blasts done..." >> blastlog.txt

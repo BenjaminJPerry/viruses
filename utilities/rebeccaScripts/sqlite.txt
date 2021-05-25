@@ -1,0 +1,28 @@
+sqlite3 myFile.trinity.fasta.summary.sql << EOF
+
+CREATE TABLE abundance (transcript CHAR, length INT, eff_length FLOAT, exp_count FLOAT, TPM FLOAT, FPKM FLOAT, IsoPct FLOAT);
+CREATE TABLE blastnr (transcript CHAR, qlen INT, sseqid CHAR, stitle CHAR, pident FLOAT, hit_length INT, evalue FLOAT, kingdom CHAR, sciname CHAR);
+CREATE TABLE blastnt (transcript CHAR, sseqid CHAR, stitle CHAR, pident FLOAT, hit_length INT, evalue FLOAT, kingdom CHAR, sciname CHAR);
+CREATE TABLE blastRdRp (transcript CHAR, qlen INT, sseqid CHAR, stitle CHAR, pident FLOAT, hit_length INT, evalue FLOAT);
+
+.mode tabs
+.import myFile.RSEM.isoforms.results.revised abundance
+.import myFile.trinity.fasta_nt.txt.revised blastnt
+.import myFile.trinity.fasta_nr.txt.revised blastnr
+.import myFile.trinity.fasta_RdRp.txt.revised blastRdRp
+
+CREATE TABLE abun_blastnt (transcript CHAR, length INT, exp_count FLOAT, transcript_nt CHAR, sseqid_nt CHAR, stitle_nt CHAR, pident_nt FLOAT, evalue_nt FLOAT, kingdom_nt CHAR, sciname_nt CHAR); 
+INSERT INTO abun_blastnt SELECT abundance.transcript, abundance.length, abundance.exp_count, blastnt.transcript, blastnt.sseqid, blastnt.stitle, blastnt.pident, blastnt.evalue, blastnt.kingdom, blastnt.sciname FROM abundance LEFT JOIN blastnt ON abundance.transcript=blastnt.transcript;
+
+CREATE TABLE abun_blastnt_blastnr (transcript CHAR, length INT, exp_count FLOAT, transcript_nt CHAR, sseqid_nt CHAR, stitle_nt CHAR, pident_nt FLOAT, evalue_nt FLOAT, kingdom_nt CHAR, sciname_nt CHAR, transcript_nr CHAR, sseqid_nr CHAR, stitle_nr CHAR, pident_nr FLOAT, evalue_nr FLOAT, kingdom_nr CHAR, sciname_nr CHAR); 
+INSERT INTO abun_blastnt_blastnr SELECT abun_blastnt.*, blastnr.transcript, blastnr.sseqid, blastnr.stitle, blastnr.pident, blastnr.evalue, blastnr.kingdom, blastnr.sciname FROM abun_blastnt LEFT JOIN blastnr ON abun_blastnt.transcript=blastnr.transcript;
+
+CREATE TABLE abun_blastnt_blastnr_blastRdRp (transcript CHAR, length INT, exp_count FLOAT, transcript_nt CHAR, sseqid_nt CHAR, stitle_nt CHAR, pident_nt FLOAT, evalue_nt FLOAT, kingdom_nt CHAR, sciname_nt CHAR, transcript_nr CHAR, sseqid_nr CHAR, stitle_nr CHAR, pident_nr FLOAT, evalue_nr FLOAT, kingdom_nr CHAR, sciname_nr CHAR, transcript_RdRp CHAR, stitle_RdRp CHAR, pident_RdRp FLOAT, evalue_RdRp FLOAT); 
+INSERT INTO abun_blastnt_blastnr_blastRdRp SELECT abun_blastnt_blastnr.*, blastRdRp.transcript, blastRdRp.stitle, blastRdRp.pident, blastRdRp.evalue FROM abun_blastnt_blastnr LEFT JOIN blastRdRp ON abun_blastnt_blastnr.transcript=blastRdRp.transcript;
+
+.output myFile.summary.table.txt
+SELECT rowid, abun_blastnt_blastnr_blastRdRp.* FROM abun_blastnt_blastnr_blastRdRp;
+.output stdout
+.exit
+
+EOF

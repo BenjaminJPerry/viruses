@@ -1,0 +1,42 @@
+# Output location: abun directory
+# File input locations: ../assemble
+
+echo "---------------------------------------- Abundances --------------------------------------" > log.txt
+
+
+# INPUT FAST FILE PREFIX LIST
+raw_files=(sample1_R1 sample1_R2 sample2_R1 sample2_R2 sample3_R1 sample3_R2)
+
+echo "Raw files are: ${raw_files[@]}" >> log.txt
+
+# OUTPUT TRINITY FILE NAME PREFIX LIST
+files=(S1 S2 S3)
+	
+echo "Output files are: ${files[@]}" >> log.txt
+
+len="${#files[@]}"
+len2=$((2 * len))
+
+if [ "${#raw_files[@]}" != $len2 ]; then
+	echo "Wrong file numbers..." >> log.txt
+	exit 1
+fi
+
+# Set j to index files list
+j=0
+
+for((i=0; i<${#raw_files[@]}; i+=2))
+do
+	echo "Calculating abundances for: ${files[j]}: ${raw_files[i]} and ${raw_files[i+1]}" >> log.txt
+		
+	/usr/local/bin/trinityv2.11/util/align_and_estimate_abundance.pl --transcripts ../assemble/"${files[j]}".trinity.Trinity.fasta --seqType fq --left ../assemble/"${raw_files[i]}".fastq.gz --right ../assemble/"${raw_files[i+1]}".fastq.gz --est_method RSEM --aln_method bowtie2 --trinity_mode --output_dir abundance_"${files[j]}" --prep_reference &&
+	
+	awk -v OFS='\t' '{ print $1,$2,$3,$3,$4,$5,$6,$7,$8 }' abundance_"${files[j]}"/RSEM.isoforms.results | sed "s/\t[^\t]*g[0-9]*\t/_len/gi" | sed 1d > "${files[j]}".RSEM.isoforms.results.revised &&
+	
+	echo "Abundances for ${files[j]} calculated and reformatted" >> log.txt
+	
+	((j+=1))
+
+done # end for
+
+echo "Abundances finished..." >> log.txt

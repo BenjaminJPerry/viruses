@@ -1,0 +1,36 @@
+echo "-------------------------------------------- Assemble ------------------------------------------" > assemblelog.txt
+
+# INPUT FAST FILE PREFIX LIST
+raw_files=(sample1_R1 sample1_R2 sample2_R1 sample2_R2 sample3_R1 sample3_R2)
+
+# OUTPUT TRINITY FILE NAME PREFIX LIST
+files=(S1 S2 S3)
+
+echo "Assembling: ${raw_files[@]} into ${files[@]}" >> assemblelog.txt &&
+
+len="${#files[@]}"
+len2=$((2 * len))
+
+if [ "${#raw_files[@]}" != $len2 ]; then
+	echo "Wrong file numbers..." >> assemblelog.txt
+	exit 1
+fi
+
+# Indexes 'files' array
+j=0
+
+echo "------------------------------------------------------------------------------------------------" >> assemblelog.txt
+
+for((i=0; i<${#raw_files[@]}; i+=2))
+do
+	echo "Assembling: ${files[j]}: ${raw_files[i]} and ${raw_files[i+1]}" >> assemblelog.txt
+		
+	Trinity --seqType fq --max_memory 120G --left "${raw_files[i]}".fastq.gz --right "${raw_files[i+1]}".fastq.gz --CPU 24 --full_cleanup --output "${files[j]}".trinity --trimmomatic &&
+		
+	echo "Finished assembling ${files[j]}..." >> assemblelog.txt;
+	
+	((j+=1));
+	
+done # end for
+
+echo "All assemblies complete!" >> assemblelog.txt;
