@@ -1,0 +1,56 @@
+#!/bin/bash
+# 2021 Geoghegan's Lab
+# Authors: Benjamin Perry, Rebecca Grimwood
+# (CC BY-NC-SA 4.0)
+# Version: 1.1.0
+# Maintainer: Benjamin J Perry
+# Email: benjamin.perry@otago.ac.nz
+# Status: Functional
+#Usage: ./virusHunter *.R1.fastq.gz *.R2.fastq.gz
+clear
+
+# Takes a fasta file of assembled transcripts and returns blast summary tables for the blastn, blatsx nr, and RdRp database hits.
+
+### Handle the input fasta files
+
+### Prepare the BLAST database
+printf "Preparing BLAST taxdb: $(date).\n\n"
+wget ftp://ftp.ncbi.nlm.nih.gov/blast/db/taxdb.tar.gz
+tar xvzf taxdb.tar.gz
+
+### Run blastn
+printf "Running blastn Analysis: $(date).\n\n"
+BLASTNT="$BASE.nt.txt.revised"
+BLASTNOUT="$BASE.nt.txt"
+printf "BLASTING: $ASSEMBLY. Storing Output in $BLASTNOUT.\n\n"
+
+blastn -query "$ASSEMBLY" -db /home/data/databases/nt/nt -max_target_seqs 5 -num_threads 24 -evalue 1E-10 -outfmt "6 qseqid sacc salltitles pident length evalue sskingdoms sscinames" -out "$BLASTNOUT"
+awk -F$'\t' '!seen[$1]++' $BLASTNOUT | sed 's/"${f}"_/TRINITY_/' > $BLASTNT
+
+
+### Run blastx against non-redundant protein database
+printf "Running blastx Analysis: $(date).\n\n"
+BLASTNR="$BASE".nr.txt.revised
+diamond blastx -q "$ASSEMBLY" -d /home/data/databases/nr/nr -o "$BASE".nr.txt -e 1E-5 -k 3 -p 24 -f 6 qseqid qlen sseqid stitle pident length evalue sskingdoms sscinames --more-sensitive
+awk -F$'\t' '!seen[$1]++' "$BASE".nr.txt | sed 's/"${f}"_/TRINITY_/' > "$BLASTNR"
+
+
+### Run blastx against GL-RdRp database
+printf "Running blastx vs RdRp Database: $(date).\n\n"
+RDRP="$BASE.RdRp.txt.revised"
+diamond blastx -q "$ASSEMBLY" -d /home/data/databases/rdrp/rdrp -o "$BASE".RdRp.txt -e 1E-5 -k 3 -p 24 -f 6 qseqid qlen sseqid stitle pident length evalue --more-sensitive
+awk -F$'\t' '!seen[$1]++' "$BASE".RdRp.txt | sed 's/"${f}"_/TRINITY_/' > "$RDRP"
+
+
+### Run blastx against the Serratus RdRp database
+printf "Running blastx vs Serratus RdRp Database: $(date).\n\n"
+RDRP="$BASE.serratus.RdRp.txt.revised"
+diamond blastx -q "$ASSEMBLY" -d /home/data/databases/rdrp/serratus_rdrp -o "$BASE".serratus.RdRp.txt -e 1E-5 -k 3 -p 24 -f 6 qseqid qlen sseqid stitle pident length evalue --more-sensitive
+awk -F$'\t' '!seen[$1]++' "$BASE".RdRp.txt | sed 's/"${f}"_/TRINITY_/' > "$RDRP"
+
+
+### Run palmscan on the contigs
+palmscan 
+
+printf "Finished and reformatted all blasts for $BASE.\n\n"
+rm taxdb*
