@@ -10,7 +10,7 @@ do
   BASE=$(echo $SAMPLE | cut -d "/" -f 1)
   printf "Processing $BASE: $(date).\n\n"
   cd $SAMPLE
-  virusHunter *1.fq.gz *2.fq.gz
+  virusHunter *1.fq.gz *2.fq.gz &&
   printf "Completed $BASE: $(date).\n\n"
   cd ..
   mv $SAMPLE "$BASE"-Completed
