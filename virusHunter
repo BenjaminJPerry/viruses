@@ -95,7 +95,8 @@ printf "Abundances for $COUNTS calculated and reformatted: $(date).\n\n"
 
 ### Build database ###
 printf "Prepared Final Output Tables with sqlite3: $(date).\n\n"
-wait 10
+sleep 10
+
 sqlite3 $BASE.trinity.fasta.summary.sql <<EOF
 
 CREATE TABLE abundance (transcript CHAR, length INT, eff_length FLOAT, exp_count FLOAT, TPM FLOAT, FPKM FLOAT, IsoPct FLOAT);
@@ -126,6 +127,11 @@ EOF
 
 printf "Filtering Summary Table for Viral Taxa: $(date).\n\n" &&
 
-grep -e 'Viruses' -e '\[.*virus' $BASE.summary.table.txt > $BASE.virus.summary.table.txt
+#touch $BASE.virus.summary.table.txt
+#head -n 1 $BASE.summary.table.txt >> $BASE.virus.summary.table.txt
+grep -e 'Viruses' -e '\[.*virus' -e "viri" -e "Viri" $BASE.summary.table.txt >> $BASE.virus.summary.table.txt
+
+printf "Running plamscan on $ASSEMBLY: $(date).\n\n"
+palmscan -search_pp "$ASSEMBLY" -fevout "$BASE".palmscan.fevout.txt -rdrp -hiconf
 
 printf "Completed virusHunter at: $(date)\n\n"
