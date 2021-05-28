@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# 2021 Geoghegan's Lab
+# Authors: Benjamin Perry
+# (CC BY-NC-SA 4.0)
+# Version: 1.1.0
+# Maintainer: Benjamin J Perry
+# Email: benjamin.perry@otago.ac.nz
+# Status: Functional
+#Usage: ./palmReader *.R1.fastq.gz *.R2.fastq.gz
+
+### Takes two fastq reads and rapidly assembles with spades then searches using palmscan for high confidence RdRP domains.
+
+printf "--- Begin Execution at: $(date). ---\n\n"
+START=`date +%s`
+sleep 1
+
+###  Check for read files ###
+if [ "$1" == "" ]; then
+	printf "No Read 1 Indicated...\n"
+	printf "Usage: palmReader *.R1.fastq.gz *.R2.fastq.gz\n\n"
+	exit 1
+fi
+if [ "$2" == "" ]; then
+	printf "No Read 2 Indicated...\n"
+	printf "Usage: palmReader *.R1.fastq.gz *.R2.fastq.gz\n\n"
+	exit 1
+fi
+if [ -f $1 ] && [ -f $2 ]; then
+	ILLUMINAR1=$1
+	ILLUMINAR2=$2
+	printf "Read Files: $ILLUMINAR1 $ILLUMINAR2\n\n"
+else
+	printf "ERROR: read files are not properly indicated.\n"
+	printf "Usage: palmReader *.R1.fastq.gz *.R2.fastq.gz\n\n"
+	exit 1
+fi
+
+R1="$1"
+R2="$2"
+
+
+BASE=$(echo $R1 | cut -d "_" -f 1,2,3,4) # for fish samples.
+mkdir palmReader-"$BASE"
+printf "--- Running palmReader on $BASE: $(date) ---\n\n"
+
+printf "--- Assembling $BASE with SPAdes RNA Viral: $(date). ---\n\n"
+
+### Genome SPAdes -rnaviral with Trinity Assembler ###
+spades.py --rnaviral -1 $RT1 -2 $RT2 -t 12 -m 128 -o palmReader/SPAdes-rnaViral &&
+
+ASSEMBLY=palmReader/scaffolds.fasta
+
+printf "--- Running plamscan on $ASSEMBLY: $(date). ---\n\n"
+palmscan -search_pp "$ASSEMBLY" -fevout palmReader/"$BASE".palmscan.hiconf.fevout.txt -rdrp -hiconf &&
+
+printf "--- Completed palmReader on $BASE: $(date). ---\n\n"
+printf "--- Putative RdRPs found: $(cat palmReader/"$BASE".palmscan.hiconf.fevout.txt | wc -l 7). ---\n"
