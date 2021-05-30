@@ -11,8 +11,9 @@
 
 ### Takes two fastq reads and rapidly assembles with spades then searches using palmscan for high confidence RdRP domains.
 
-printf "--- Begin Execution at: $(date). ---\n\n"
+printf "Begin Execution at: $(date).\n\n"
 START=`date +%s`
+printf "Current working directory: %(pwd).\n\n"
 sleep 1
 
 ###  Check for read files ###
@@ -36,23 +37,25 @@ else
 	exit 1
 fi
 
+
 R1="$1"
 R2="$2"
-
+printf "Read 1: $R1 \n"
+printf "Read 2: $R2 \n\n"
 
 BASE=$(echo $R1 | cut -d "_" -f 1,2,3,4) # for fish samples.
 mkdir palmReader
-printf "--- Running palmReader on $BASE: $(date) ---\n\n"
+printf "Running palmReader on $BASE: $(date)\n\n"
 
-printf "--- Assembling $BASE with SPAdes RNA Viral: $(date). ---\n\n"
+printf "Assembling $BASE with SPAdes RNA Viral: $(date).\n\n"
 
 ### Genome SPAdes -rnaviral with Trinity Assembler ###
-spades.py --rnaviral -1 $RT1 -2 $RT2 -t 12 -m 128 -o palmReader/SPAdes-rnaViral &&
+spades.py --rnaviral -1 $R1 -2 $R2 -t 12 -m 128 -o palmReader/SPAdesRnaViral &&
 
-ASSEMBLY=palmReader/SPAdes-rnaViral/scaffolds.fasta
+ASSEMBLY=palmReader/SPAdesRnaViral/scaffolds.fasta
 
-printf "--- Running plamscan on $ASSEMBLY: $(date). ---\n\n"
-palmscan -search_pp "$ASSEMBLY" -fevout palmReader/"$BASE".palmscan.hiconf.fevout.txt -rdrp -hiconf &&
+printf "Running plamscan on $ASSEMBLY: $(date).\n\n"
+palmscan -search_pp "$ASSEMBLY" -fevout "palmReader/$BASE.palmscan.hiconf.fevout.txt" -rdrp -hiconf &&
 
-printf "--- Completed palmReader on $BASE: $(date). ---\n\n"
-printf "--- Putative RdRPs found: $(cat palmReader/"$BASE".palmscan.hiconf.fevout.txt | wc -l). ---\n"
+printf "Completed palmReading on $BASE: $(date).\n\n"
+#printf "Putative RdRPs found: $(cat palmReader/"$BASE".palmscan.hiconf.fevout.txt | wc -l).\n"
