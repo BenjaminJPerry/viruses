@@ -127,8 +127,6 @@ EOF
 
 printf "Filtering Summary Table for Viral Taxa: $(date).\n\n" &&
 
-#touch $BASE.virus.summary.table.txt
-#head -n 1 $BASE.summary.table.txt >> $BASE.virus.summary.table.txt
 grep -e 'Viruses' -e '\[.*virus' $BASE.summary.table.txt >> $BASE.virus.summary.table.txt &&
 
 printf "Running plamscan on $ASSEMBLY: $(date).\n\n"

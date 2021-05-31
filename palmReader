@@ -7,9 +7,14 @@
 # Maintainer: Benjamin J Perry
 # Email: benjamin.perry@otago.ac.nz
 # Status: Functional
+# 1. SPAdes genome assembler
+# 2. palmscan RdRP profilers
+
 #Usage: ./palmReader *.R1.fastq.gz *.R2.fastq.gz
 
 ### Takes two fastq reads and rapidly assembles with spades then searches using palmscan for high confidence RdRP domains.
+### Dependencies:
+
 
 printf "Begin Execution at: $(date).\n\n"
 START=`date +%s`
@@ -55,7 +60,7 @@ spades.py --rnaviral -1 $R1 -2 $R2 -t 12 -m 128 -o palmReader/SPAdesRnaViral &&
 ASSEMBLY=palmReader/SPAdesRnaViral/scaffolds.fasta
 
 printf "Running plamscan on $ASSEMBLY: $(date).\n\n"
+# palmscan can be modified to return putative RT domains (-RT) and low confidence RdRP predictions (-loconf)
 palmscan -search_pp "$ASSEMBLY" -fevout "palmReader/$BASE.palmscan.hiconf.fevout.txt" -rdrp -hiconf &&
 
 printf "Completed palmReading on $BASE: $(date).\n\n"
-#printf "Putative RdRPs found: $(cat palmReader/"$BASE".palmscan.hiconf.fevout.txt | wc -l).\n"

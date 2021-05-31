@@ -50,7 +50,7 @@ awk -F$'\t' '!seen[$1]++' "$BASE".RdRp.txt | sed 's/"${f}"_/TRINITY_/' > "$RDRP"
 
 
 ### Run palmscan on the contigs
-palmscan 
+palmscan
 
 printf "Finished and reformatted all blasts for $BASE.\n\n"
 rm taxdb*
