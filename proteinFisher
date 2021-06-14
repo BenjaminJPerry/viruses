@@ -65,12 +65,12 @@ diamond blastx -p 24 -M 128 -d $DB -q $R2 -k 1 --id 20 --query-cover 5 --subject
 CWD=$(pwd)
 cat $BASETEMP/reads.2.out >> $BASETEMP/reads.1.out
 cat $BASETEMP/reads.1.out | sort | uniq > $BASETEMP/unique.reads.out
-zgrep -A 3 -f "$BASETEMP/unique.reads.out" $R1 | grep -v "\-\-" > $CWD/$PROTEIN.fished.reads.fastq
-zgrep -A 3 -f "$BASETEMP/unique.reads.out" $R2 | grep -v "\-\-" > $CWD/$PROTEIN.fished.reads.fastq
+zgrep -A 3 -f "$BASETEMP/unique.reads.out" $R1 | grep -v "\-\-" > "$CWD/$PROTEIN.fished.reads.fastq"
+zgrep -A 3 -f "$BASETEMP/unique.reads.out" $R2 | grep -v "\-\-" >> "$CWD/$PROTEIN.fished.reads.fastq"
 
 printf "proteinFisher completed.\n"
-printf "Total reads caught: $(cat $PROTEIN.fished.reads.fastq | grep -e "@" | wc -l)\n\n"
-printf "Finished proteinFisher at: $(date)\n"
+printf "Total reads caught: $(cat $PROTEIN.fished.reads.fastq | grep -e "@" | wc -l)\n"
+printf "Finished proteinFisher at: $(date)\n\n"
 rm -r $BASETEMP
 rm *.dmnd
 
