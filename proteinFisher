@@ -52,7 +52,7 @@ PF="$3"
 BASETEMP=proteinFisherTMP
 mkdir $BASETEMP
 DB="$BASETEMP/$PROTEIN.db"
-diamond makedb --in $PROTEIN --db $DB
+diamond makedb -p 24 -M 128 --in $PROTEIN --db $DB
 
 ### Run Diamond Alignment of Translated Reads
 # Read 1
