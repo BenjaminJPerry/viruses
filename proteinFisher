@@ -8,7 +8,7 @@
 # Status: Functional
 #Usage: proteinFisher *.R1.fastq.gz *.R2.fastq.gz protein.fasta
 
-clear
+#clear
 printf "Begin proteinFisher at: $(date)\n\n"
 START=`date +%s`
 sleep 1
