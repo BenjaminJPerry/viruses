@@ -1,6 +1,5 @@
 #!/bin/bash
-
-# 2021 Geoghegan's Lab
+# 2021 Geoghegan Lab
 # Authors: Benjamin Perry
 # (CC BY-NC-SA 4.0)
 # Version: 1.1.0
@@ -52,10 +51,10 @@ BASE=$(echo $R1 | cut -d "_" -f 1,2,3,4) # for fish samples.
 mkdir palmReader
 printf "Running palmReader on $BASE: $(date)\n\n"
 
-printf "Assembling $BASE with SPAdes RNA Viral: $(date).\n\n"
+printf "Assembling $BASE with SPAdes RNA: $(date).\n\n"
 
 ### Genome SPAdes -rnaviral with Trinity Assembler ###
-spades.py --rnaviral -1 $R1 -2 $R2 -t 12 -m 128 -o palmReader/SPAdesRnaViral &&
+spades.py --rna -1 $R1 -2 $R2 -t 12 -m 128 -o palmReader/SPAdesRnaViral &&
 
 ASSEMBLY=palmReader/SPAdesRnaViral/scaffolds.fasta
 

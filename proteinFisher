@@ -1,0 +1,75 @@
+#!/bin/bash
+# 2021 Geoghegan Lab
+# Authors: Benjamin Perry
+# (CC BY-NC-SA 4.0)
+# Version: 1.0.0
+# Maintainer: Benjamin J Perry
+# Email: benjamin.perry@otago.ac.nz
+# Status: Functional
+#Usage: proteinFisher *.R1.fastq.gz *.R2.fastq.gz protein.fasta
+
+clear
+printf "Begin proteinFisher at: $(date)\n\n"
+START=`date +%s`
+sleep 1
+
+###  Check for read files ###
+if [ "$1" == "" ]; then
+	printf "No Read 1 Indicated...\n"
+	printf "Usage: proteinFisher *.R1.fastq.gz *.R2.fastq.gz protein.fasta\n\n"
+	exit 1
+fi
+if [ "$2" == "" ]; then
+	printf "No Read 2 Indicated...\n"
+	printf "Usage: proteinFisher *.R1.fastq.gz *.R2.fastq.gz protein.fasta\n\n"
+	exit 1
+fi
+if [ "$3" == "" ]; then
+	printf "No protein.fasta Indicated...\n"
+	printf "Usage: proteinFisher *.R1.fastq.gz *.R2.fastq.gz protein.fasta\n\n"
+	exit 1
+fi
+if [ -f $1 ] && [ -f $2 ]; then
+	ILLUMINAR1=$1
+	ILLUMINAR2=$2
+	printf "Read Files: $ILLUMINAR1 $ILLUMINAR2\n"
+else
+	printf "ERROR: read files are not properly indicated.\n"
+	printf "Usage: proteinFisher *.R1.fastq.gz *.R2.fastq.gz protein.fasta\n\n"
+	exit 1
+fi
+if [ -f $3 ]; then
+	PROTEIN=$3
+	printf "Protein File: $PROTEIN\n"
+	printf "Query: $(head -n 1 $PROTEIN)\n\n"
+fi
+
+R1="$1"
+R2="$2"
+PF="$3"
+
+### Build Diamond Database of PROTEIN
+BASETEMP=proteinFisherTMP
+mkdir $BASETEMP
+DB="$BASETEMP"/"$PROTEIN".db
+diamond makedb --in $PROTEIN --db $DB
+
+### Run Diamond Alignment of Translated Reads
+# Read 1
+diamond blastx -p 24 -M 128 -d $DB -q $R1 -k 1 --id 20 --query-cover 5 --subject-cover 1 -o $BASETEMP/read.1.out -f 6 qseqid
+
+# Read 2
+diamond blastx -p 24 -M 128 -d $DB -q $R2 -k 1 --id 20 --query-cover 5 --subject-cover 1 -o $BASETEMP/reads.2.out -f 6 qseqid
+
+### Take Read IDs from Daimond and filter for fastq Reads
+cat $BASETEMP/reads.2.out >> $BASETEMP/reads.1.out
+cat $BASETEMP/reads.1.out | sort | uniq > $BASETEMP/unique.reads.out
+zgrep -A 3 -f $BASETEMP/unique.reads.out $R1 | grep -v "\-\-" > $PROTEIN.fished.reads.fastq
+zgrep -A 3 -f $BASETEMP/unique.reads.out $R2 | grep -v "\-\-" > $PROTEIN.fished.reads.fastq
+
+printf "proteinFisher completed.\n"
+printf "Total reads caught: $(wc -l $BASETEMP/unique.reads.out)\n\n"
+printf "Finished proteinFisher at: $(date)"
+rm -r $BASETMP
+
+exit
