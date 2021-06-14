@@ -72,6 +72,5 @@ printf "proteinFisher completed.\n"
 printf "Total reads caught: $(cat $PROTEIN.fished.reads.fastq | grep -e "@" | wc -l)\n"
 printf "Finished proteinFisher at: $(date)\n\n"
 rm -r $BASETEMP
-rm *.dmnd
 
 exit 0
