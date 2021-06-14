@@ -69,7 +69,7 @@ zgrep -A 3 -f $BASETEMP/unique.reads.out $R2 | grep -v "\-\-" > $PROTEIN.fished.
 
 printf "proteinFisher completed.\n"
 printf "Total reads caught: $(wc -l $BASETEMP/unique.reads.out)\n\n"
-printf "Finished proteinFisher at: $(date)"
+printf "Finished proteinFisher at: $(date)\n"
 rm -r $BASETMP
 
-exit
+exit 0
