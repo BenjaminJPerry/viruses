@@ -51,11 +51,8 @@ PF="$3"
 ### Build Diamond Database of PROTEIN
 BASETEMP=proteinFisherTMP
 mkdir $BASETEMP
-cd $BASETEMP
-DB=$PROTEIN.db
-diamond makedb --in ../$PROTEIN --db $DB
-cd ..
 DB="$BASETEMP/$PROTEIN.db"
+diamond makedb --in $PROTEIN --db $DB
 
 ### Run Diamond Alignment of Translated Reads
 # Read 1
@@ -69,7 +66,7 @@ CWD=$(pwd)
 cat $BASETEMP/reads.2.out >> $BASETEMP/reads.1.out
 cat $BASETEMP/reads.1.out | sort | uniq > $BASETEMP/unique.reads.out
 zgrep -A 3 -f "$BASETEMP/unique.reads.out" $R1 | grep -v "\-\-" > $CWD/$PROTEIN.fished.reads.fastq
-zgrep -A 3 -f "$BASETEMP/unique.reads.out" $R2 | grep -v "\-\-" > $CWD/ls $PROTEIN.fished.reads.fastq
+zgrep -A 3 -f "$BASETEMP/unique.reads.out" $R2 | grep -v "\-\-" > $CWD/$PROTEIN.fished.reads.fastq
 
 printf "proteinFisher completed.\n"
 printf "Total reads caught: $(cat $PROTEIN.fished.reads.fastq | grep -e "@" | wc -l)\n\n"
